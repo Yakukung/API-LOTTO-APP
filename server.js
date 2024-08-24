@@ -96,6 +96,58 @@ app.get("/customers/:uid", (req, res) => {
   });
 });
 
+app.get("/customers/detail/:id", (req, res) => {
+  const id = req.params.id;
+  db.get("SELECT * FROM users WHERE uid = ?", [id], (err, row) => {
+    if (err) {
+      handleResponse(res, err, null, 404, "Customer not found");
+      return;
+    }
+
+    if (!row) {
+      handleResponse(res, null, null, 404, "Customer not found");
+      return;
+    }
+
+    handleResponse(res, null, row); // ส่งข้อมูลที่ได้กลับไปทั้งหมดรวมทั้งรหัสผ่าน
+  });
+});
+
+app.put("/customers/detail/update/:id", (req, res) => {
+  const id = req.params.id;
+  const { username, fullname, email, phone, password, image } = req.body;
+  db.run(
+    "UPDATE users SET username = ?, fullname = ?, email = ?, phone = ?, password = ?, image = ? WHERE uid = ?",
+    [username, fullname, email, phone, password, image, id],
+    function (err) {
+      handleResponse(
+        res,
+        err,
+        { message: "Customer updated successfully" },
+        404,
+        "Customer not found",
+        this.changes
+      );
+    }
+  );
+});
+
+app.delete("/customers/detail/delete/:id", (req, res) => {
+  const uid = req.params.id;
+  db.run("DELETE FROM users WHERE uid = ?", [uid], function (err) {
+    handleResponse(
+      res,
+      err,
+      { message: "Customer deleted successfully" },
+      404,
+      "Customer not found",
+      this.changes
+    );
+  });
+});
+
+
+
 
 
 app.post("/register", (req, res) => {
@@ -116,6 +168,30 @@ app.post("/register", (req, res) => {
     }
   );
 });
+
+
+
+app.put("/customers/:id", (req, res) => {
+  const id = req.params.id;
+  const { usersname, fullname, phone, email, password, image } = req.body;
+  db.run(
+    `UPDATE users
+     SET usersname = ?, fullname = ?, phone = ?, email = ?, password = ?, image = ?
+     WHERE uid = ?`,
+    [usersname, fullname, phone, email, password, image, id],
+    function (err) {
+      handleResponse(
+        res,
+        err,
+        { message: "Customer updated successfully" },
+        404,
+        "Customer not found",
+        this.changes
+      );
+    }
+  );
+});
+
 
 
 app.get('/lotto', (req, res) => {
