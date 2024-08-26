@@ -207,9 +207,10 @@ app.get('/lotto', (req, res) => {
 
 app.get('/lotto-prize', (req, res) => {
   const sql = `
-              SELECT lp.prize, l.number, l.type, price, l.date, lotto_quantity
+             SELECT lp.prize, lp.wallet_prize, l.number, l.type, l.price, l.date, l.lotto_quantity
               FROM lotto_prize lp
               JOIN lotto l ON lp.lid = l.lid
+              ORDER BY l.date DESC, lp.prize ASC;
   `;
   db.all(sql, (err, row) => {
     console.log('Response from DB:', row); // แสดงข้อมูลที่ได้จากฐานข้อมูล

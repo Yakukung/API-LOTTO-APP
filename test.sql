@@ -31,26 +31,57 @@ CREATE TABLE lotto (
 CREATE TABLE lotto_prize (
   lpid INTEGER PRIMARY KEY AUTOINCREMENT,
   lid INTEGER NOT NULL,
-  prize INTEGER DEFAULT NULL,
+  prize INTEGER DEFAULT 0,
+  wallet_prize INTEGER DEFAULT 0,
+   date TEXT DEFAULT (datetime('now')),
   FOREIGN KEY (lid) REFERENCES lotto (lid)
 );
 
 
-INSERT INTO lotto (number, type, price, lotto_quantity) VALUES (123456, 'หวยเดี่ยว', 80, 99);
-INSERT INTO lotto (number, type, price, lotto_quantity) VALUES (654321, 'หวยชุด', 400, 40);
-INSERT INTO lotto (number,type, price, lotto_quantity) VALUES (112233, 'หวยเดี่ยว', 80, 54);
-INSERT INTO lotto (number,type, price, lotto_quantity) VALUES (888999, 'หวยชุด', 400, 19);
-INSERT INTO lotto (number,type, price, lotto_quantity) VALUES (123321, 'หวยเดี่ยว', 80, 23);
-INSERT INTO lotto (number,type, price, lotto_quantity) VALUES (111111, 'หวยเดี่ยว', 80, 10);
-INSERT INTO lotto (number,type, price, lotto_quantity) VALUES (122222, 'หวยเดี่ยว', 80, 9);
-
-INSERT INTO lotto_prize (lid, prize) VALUES (3, 1);
-INSERT INTO lotto_prize (lid, prize) VALUES (2, 2);
-INSERT INTO lotto_prize (lid, prize) VALUES (1, 3);
-INSERT INTO lotto_prize (lid, prize) VALUES (5, 4);
-INSERT INTO lotto_prize (lid, prize) VALUES (4, 5);
 
 
+INSERT INTO lotto (number, type, price, lotto_quantity, date) VALUES (123456, 'หวยเดี่ยว', 80, 99, '2024-08-23 13:02:19');
+INSERT INTO lotto (number, type, price, lotto_quantity, date) VALUES (654321, 'หวยชุด', 400, 40, '2024-08-23 13:02:19');
+INSERT INTO lotto (number,type, price, lotto_quantity, date) VALUES (112233, 'หวยเดี่ยว', 80, 54, '2024-08-23 13:02:19');
+INSERT INTO lotto (number,type, price, lotto_quantity, date) VALUES (888999, 'หวยชุด', 400, 19, '2024-08-23 13:02:19');
+INSERT INTO lotto (number,type, price, lotto_quantity, date) VALUES (123321, 'หวยเดี่ยว', 80, 23, '2024-08-23 13:02:19');
+INSERT INTO lotto (number,type, price, lotto_quantity, date) VALUES (111111, 'หวยเดี่ยว', 80, 10, '2024-08-23 13:02:19');
+INSERT INTO lotto (number,type, price, lotto_quantity, date) VALUES (122222, 'หวยเดี่ยว', 80, 9, '2024-08-23 13:02:19');
+INSERT INTO lotto (number,type, price, lotto_quantity, date) VALUES (676767, 'หวยเดี่ยว', 80, 9, '2024-08-23 13:02:19');
+
+
+INSERT INTO lotto (number,type, price, lotto_quantity, date) VALUES (222222, 'หวยเดี่ยว', 80, 9, '2024-08-24 13:02:19');
+INSERT INTO lotto (number,type, price, lotto_quantity, date) VALUES (232323, 'หวยชุด', 400, 19, '2024-08-24 13:02:19');
+INSERT INTO lotto (number,type, price, lotto_quantity, date) VALUES (223333, 'หวยเดี่ยว', 80, 9, '2024-08-24 13:02:19');
+INSERT INTO lotto (number,type, price, lotto_quantity, date) VALUES (678904, 'หวยเดี่ยว', 80, 9, '2024-08-24 13:02:19');
+INSERT INTO lotto (number,type, price, lotto_quantity, date) VALUES (567801, 'หวยเดี่ยว', 80, 9, '2024-08-24 13:02:19');
+INSERT INTO lotto (number,type, price, lotto_quantity, date) VALUES (567802, 'หวยเดี่ยว', 80, 9, '2024-08-24 13:02:19');
+
+INSERT INTO lotto_prize (lid, prize, date, wallet_prize) VALUES (1, 5, '2024-08-23 13:02:19', 100000);
+INSERT INTO lotto_prize (lid, prize, date, wallet_prize) VALUES (2, 4, '2024-08-23 13:02:19', 500000);
+INSERT INTO lotto_prize (lid, prize, date, wallet_prize) VALUES (3, 3, '2024-08-23 13:02:19', 1000000);
+INSERT INTO lotto_prize (lid, prize, date, wallet_prize) VALUES (4, 2, '2024-08-23 13:02:19', 2000000);
+INSERT INTO lotto_prize (lid, prize, date, wallet_prize) VALUES (5, 1, '2024-08-23 13:02:19', 6000000);
+
+INSERT INTO lotto_prize (lid, prize, date, wallet_prize) VALUES (9, 5, '2024-08-23 13:02:19', 100000);
+INSERT INTO lotto_prize (lid, prize, date, wallet_prize) VALUES (10, 4, '2024-08-23 13:02:19', 500000);
+INSERT INTO lotto_prize (lid, prize, date, wallet_prize) VALUES (11, 3, '2024-08-23 13:02:19', 1000000);
+INSERT INTO lotto_prize (lid, prize, date, wallet_prize) VALUES (12, 2, '2024-08-23 13:02:19', 2000000);
+INSERT INTO lotto_prize (lid, prize, date, wallet_prize) VALUES (13, 1, '2024-08-23 13:02:19', 6000000);
+
+
+
+SELECT * FROM lotto_prize
+
+CREATE TRIGGER update_wallet_prize
+AFTER INSERT ON lotto_prize
+FOR EACH ROW
+WHEN NEW.prize = 1
+BEGIN
+    UPDATE lotto_prize
+    SET wallet_prize = 6000000
+    WHERE lpid = NEW.lpid;
+END;
 
 
 SELECT lp.prize, l.number, l.type, price, l.date, lotto_quantity
@@ -71,6 +102,13 @@ WHERE lp.prize = 1;
               JOIN lotto l ON lp.lid = l.lid
 
 SELECT * FROM lotto
+
+
+SELECT lp.prize, lp.wallet_prize, l.number, l.type, l.price, l.date, l.lotto_quantity
+FROM lotto_prize lp
+JOIN lotto l ON lp.lid = l.lid
+ORDER BY l.date DESC, lp.prize ASC;
+
 
 
 PRAGMA table_info(lotto_prize);
