@@ -204,10 +204,28 @@ app.get('/lotto', (req, res) => {
   });
 });
 
+app.get("/lotto/:id", (req, res) => {
+  const id = req.params.id;
+  db.get("SELECT * FROM lotto WHERE lid = ?", [id], (err, row) => {
+    if (err) {
+      handleResponse(res, err, null, 500, "Error fetching data");
+      return;
+    }
+
+    if (!row) {
+      handleResponse(res, null, null, 404, "Lotto not found");
+      return;
+    }
+
+    res.json(row);
+  });
+});
+
+
 
 app.get('/lotto-prize', (req, res) => {
   const sql = `
-             SELECT lp.prize, lp.wallet_prize, l.number, l.type, l.price, l.date, l.lotto_quantity
+             SELECT l.lid, lp.prize, lp.wallet_prize, l.number, l.type, l.price, l.date, l.lotto_quantity
               FROM lotto_prize lp
               JOIN lotto l ON lp.lid = l.lid
               ORDER BY l.date DESC, lp.prize ASC;
@@ -245,7 +263,7 @@ app.post('/lotto-types', (req, res) => {
   }
 
   const sql = `
-    SELECT lp.prize, l.number, l.type, price, l.date, lotto_quantity
+    SELECT l.lid, lp.prize, l.number, l.type, price, l.date, lotto_quantity
     FROM lotto_prize lp
     JOIN lotto l ON lp.lid = l.lid
     WHERE l.type = ?
@@ -341,7 +359,7 @@ app.get('/lotto/types', (req, res) => {
 
 
 app.get('/lotto-prize/type', (req, res) => {
-  const { type } = req.query; // ใช้ req.query แทน req.body
+  const { type } = req.query; 
 
   console.log('Type received:', type);
 
@@ -370,6 +388,102 @@ app.get('/lotto-prize/type', (req, res) => {
     console.log('Response from DB:', rows);
 
     res.status(200).json(rows);
+  });
+});
+
+
+app.get('/check-basket', (req, res) => {
+  const { uid, lid } = req.query;
+
+  const sql = 'SELECT quantity FROM basket WHERE uid = ? AND lid = ?';
+  db.get(sql, [uid, lid], (err, row) => {
+    if (err) {
+      return res.status(500).json({ error: 'Database error' });
+    }
+
+    if (row) {
+      res.status(200).json({ exists: true, quantity: row.quantity });
+    } else {
+      res.status(200).json({ exists: false });
+    }
+  });
+});
+
+
+app.post("/add-basket", (req, res) => {
+  const { lid, uid, quantity } = req.body;
+  db.run(
+    "INSERT INTO basket (lid, uid, quantity) VALUES (?, ?, ?)",
+    [lid, uid, quantity],
+    function (err) {
+      if (err) {
+        res.status(500).json({ error: "Failed to add item to basket" });
+      } else {
+        res.status(200).json({ message: "เพิ่มสินค้าเข้าตะกร้าสำเร็จ", lid: lid ,uid: uid});
+      }
+    }
+  );
+});
+
+app.put('/update-basket', (req, res) => {
+  const { uid, lid, quantity } = req.body;
+
+  const sql = 'UPDATE basket SET quantity = ? WHERE uid = ? AND lid = ?';
+  db.run(sql, [quantity, uid, lid], function(err) {
+    if (err) {
+      return res.status(500).json({ error: 'Database error' });
+    }
+    res.status(200).json({ message: 'Basket updated successfully' });
+  });
+});
+
+
+
+app.get('/basket/:uid', (req, res) => {
+  const { uid } = req.params; // รับ uid จาก path parameter
+
+  console.log('basket UID:', uid);
+
+  if (!uid) {
+    return res.status(400).json({ error: 'Failed no item basket' });
+  }
+
+  const sql = `
+    SELECT u.uid, l.lid, l.number, l.type, l.price, l.date, l.lotto_quantity, bk.quantity
+    FROM basket bk
+    JOIN lotto l ON bk.lid = l.lid
+    JOIN users u ON bk.uid = u.uid
+    WHERE u.uid = ?
+  `;
+  
+  db.all(sql, [uid], (err, rows) => {
+    if (err) {
+      console.error('Database error:', err); 
+      return res.status(500).json({ error: 'Internal server error' });
+    }
+
+    if (rows.length === 0) {
+      return res.status(404).json({ message: 'Lotto prize not found' });
+    }
+
+    console.log('Response from DB:', rows);
+
+    res.status(200).json(rows);
+  });
+});
+
+
+app.delete("/basket/:id", (req, res) => {
+  const lid = req.params.id;
+  db.run("DELETE FROM basket WHERE lid = ?", [lid], function (err) {
+    handleResponse(
+      res,
+      err,
+      { message: "ลบ LOTTO ในตะกร้าเรียบร้อย" },
+      404,
+      "Meeting not found",
+      this.lid
+    );
   });
 });
 

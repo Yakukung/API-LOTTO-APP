@@ -2,6 +2,8 @@
 DROP TABLE IF EXISTS users;
 DROP TABLE IF EXISTS lotto_prize;
 DROP TABLE IF EXISTS lotto;
+DROP TABLE IF EXISTS my_lotto;
+DROP TABLE IF EXISTS basket;
 
 ALTER TABLE lotto RENAME TO lotto_prize;
 */
@@ -36,6 +38,36 @@ CREATE TABLE lotto_prize (
    date TEXT DEFAULT (datetime('now')),
   FOREIGN KEY (lid) REFERENCES lotto (lid)
 );
+
+
+
+CREATE TABLE my_lotto (
+  mlid INTEGER PRIMARY KEY AUTOINCREMENT,
+  uid INTEGER NOT NULL,
+  lid INTEGER NOT NULL,
+  quantity INTEGER NOT NULL,
+  total_price INTEGER NOT NULL,
+  FOREIGN KEY (lid) REFERENCES lotto (lid),
+  FOREIGN KEY (uid) REFERENCES users (uid)
+);
+
+CREATE TABLE basket (
+  bid INTEGER PRIMARY KEY AUTOINCREMENT,
+  lid INTEGER NOT NULL,
+  uid INTEGER NOT NULL,
+  quantity INTEGER NOT NULL,
+  status INTEGER CHECK(status IN (0, 1)) DEFAULT 0 NOT NULL,
+  FOREIGN KEY (lid) REFERENCES lotto (lid),
+  FOREIGN KEY (uid) REFERENCES users (uid)
+);
+
+SELECT * FROM basket
+SELECT * FROM lotto
+
+INSERT INTO basket (lid, uid, quantity) 
+VALUES (1, 8, 4);
+
+
 
 
 
@@ -111,7 +143,7 @@ ORDER BY l.date DESC, lp.prize ASC;
 
 
 
-PRAGMA table_info(lotto_prize);
+PRAGMA table_info(basket);
 
 
 
@@ -156,3 +188,15 @@ SELECT * FROM users WHERE uid = 4;
 
 
 SELECT * FROM users
+
+
+
+SELECT l.lid, lp.prize, lp.wallet_prize, l.number, l.type, l.price, l.date, l.lotto_quantity
+              FROM lotto_prize lp
+              JOIN lotto l ON lp.lid = l.lid
+              ORDER BY l.date DESC, lp.prize ASC;
+
+
+
+
+
