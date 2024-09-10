@@ -149,25 +149,46 @@ app.delete("/customers/detail/delete/:id", (req, res) => {
 
 
 
-
 app.post("/register", (req, res) => {
-  const { fullname, username, email, phone, password, wallet } = req.body;
+  const { fullname, username, email, phone, password } = req.body;
+  
+  db.serialize(() => {
+    db.run("BEGIN TRANSACTION");
+    
+    db.run(
+      "INSERT INTO users (fullname, username, email, phone, password) VALUES (?, ?, ?, ?, ?)",
+      [fullname, username, email, phone, password],
+      function (err) {
+        if (err) {
+          db.run("ROLLBACK");
+          return handleResponse(res, err, null, 404, "error");
+        }
 
-  db.run(
-    "INSERT INTO users (fullname, username, email, phone, password, wallet) VALUES (?, ?, ?, ?, ?, ?)",
-    [fullname, username, email, phone, password, wallet],
-    function (err) {
-      handleResponse(
-        res,
-        err,
-        { message: "register successfully" },
-        404,
-        "error",
-        this.lastID
-      );
-    }
-  );
+        db.get("SELECT wallet FROM wallet", (err, row) => {
+          if (err) {
+            db.run("ROLLBACK");
+            return handleResponse(res, err, null, 404, "error");
+          }
+
+          db.run(
+            "UPDATE users SET wallet = ? WHERE uid = ?",
+            [row.wallet, this.lastID],
+            function (err) {
+              if (err) {
+                db.run("ROLLBACK");
+                return handleResponse(res, err, null, 404, "error");
+              }
+
+              db.run("COMMIT");
+              handleResponse(res, null, { message: "Register successfully" }, 200, "success", this.lastID);
+            }
+          );
+        });
+      }
+    );
+  });
 });
+
 
 
 
@@ -485,7 +506,107 @@ app.delete("/basket/:id", (req, res) => {
       this.lid
     );
   });
+
 });
+
+
+app.put("/basket/quantity", (req, res) => {
+  const { uid, lid, quantity } = req.body;
+  
+  // ตรวจสอบข้อมูลที่ส่งมาให้แน่ใจว่าไม่ว่าง
+  if (!uid || !lid || quantity == null) {
+    return res.status(400).json({ error: "Invalid data provided" });
+  }
+
+  // อัปเดตตาราง basket โดยใช้ฟิลด์ที่สอดคล้องกัน
+  db.run(
+    "UPDATE basket SET quantity = ? WHERE uid = ? AND lid = ?",
+    [quantity, uid, lid],
+    function (err) {
+      if (err) {
+        console.error("Error updating quantity:", err.message);
+        res.status(500).json({ error: "Failed to update quantity" });
+      } else {
+        console.log(`Quantity updated for uid: ${uid}, lid: ${lid}, quantity: ${quantity}`);
+        res.status(200).json({ message: "Quantity updated successfully" });
+      }
+    }
+  );
+});
+
+app.post("/payment", (req, res) => {
+  const { lid, uid, quantity, total_price } = req.body;
+  console.log("Received payment data:", req.body); // บันทึกข้อมูลที่ได้รับจากไคลเอนต์
+
+  // เริ่มทำธุรกรรมฐานข้อมูล
+  db.serialize(() => {
+    db.run("BEGIN TRANSACTION"); // เริ่มธุรกรรม
+
+    // แทรกข้อมูลลงในตาราง my_lotto
+    db.run(
+      "INSERT INTO my_lotto (lid, uid, quantity, total_price) VALUES (?, ?, ?, ?)",
+      [lid, uid, quantity, total_price],
+      function (err) {
+        if (err) {
+          console.error("Error inserting data:", err); // บันทึกข้อผิดพลาด
+          return db.run("ROLLBACK", () => {
+            res.status(500).json({ error: "Failed to add item to basket" });
+          });
+        }
+
+        // ลบข้อมูลจากตาราง basket หลังจากแทรกข้อมูลสำเร็จ
+        db.run(
+          "DELETE FROM basket WHERE uid = ? AND lid = ?",
+          [uid, lid],
+          function (err) {
+            if (err) {
+              console.error("Error deleting data:", err); // บันทึกข้อผิดพลาด
+              return db.run("ROLLBACK", () => {
+                res.status(500).json({ error: "Failed to delete item from basket" });
+              });
+            }
+
+            // ลดค่า lotto_quantity ในตาราง lotto ตามจำนวน quantity
+            db.run(
+              "UPDATE lotto SET lotto_quantity = lotto_quantity - ? WHERE lid = ?",
+              [quantity, lid],
+              function (err) {
+                if (err) {
+                  console.error("Error updating lotto_quantity:", err); // บันทึกข้อผิดพลาด
+                  return db.run("ROLLBACK", () => {
+                    res.status(500).json({ error: "Failed to update lotto_quantity" });
+                  });
+                }
+
+                // ลดค่า wallet ในตาราง users ตามจำนวน total_price
+                db.run(
+                  "UPDATE users SET wallet = wallet - ? WHERE uid = ?",
+                  [total_price, uid],
+                  function (err) {
+                    if (err) {
+                      console.error("Error updating wallet:", err); // บันทึกข้อผิดพลาด
+                      return db.run("ROLLBACK", () => {
+                        res.status(500).json({ error: "Failed to update wallet" });
+                      });
+                    }
+
+                    // คอมมิตธุรกรรมหลังจากการอัปเดตข้อมูลทั้งหมดเสร็จสิ้น
+                    db.run("COMMIT", () => {
+                      res.status(200).json({ message: "เพิ่มสินค้าเข้าตะกร้าสำเร็จ, ลบรายการจากตะกร้า, ลดจำนวนล็อตโต้, และปรับยอดเงินใน wallet" });
+                    });
+                  }
+                );
+              }
+            );
+          }
+        );
+      }
+    );
+  });
+});
+
+
+
 
 
 
