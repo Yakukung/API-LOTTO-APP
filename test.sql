@@ -3,6 +3,7 @@ DROP TABLE IF EXISTS users;
 DROP TABLE IF EXISTS lotto_prize;
 DROP TABLE IF EXISTS lotto;
 DROP TABLE IF EXISTS my_lotto;
+DROP TABLE IF EXISTS payment;
 DROP TABLE IF EXISTS basket;
 DROP TABLE IF EXISTS wallet;
 
@@ -21,16 +22,9 @@ CREATE TABLE users (
     image TEXT DEFAULT NULL
 );
 
-SELECT * FROM wallet
 CREATE TABLE wallet(
   wallet DECIMAL(10, 2) DEFAULT 0.00
-  
-)
-INSERT INTO wallet VALUES(3000.00)
-INSERT INTO users (fullname, username, email, phone, password, wallet, image) 
-VALUES ('คามาโดะ ทันจิโร่', '1', 'tanjiro@gmail.com', '0989898989', '1', 0.00, NULL);
-
-
+);
 
 
 CREATE TABLE lotto (
@@ -48,19 +42,8 @@ CREATE TABLE lotto_prize (
   prize INTEGER DEFAULT 0,
   wallet_prize INTEGER DEFAULT 0,
   status INTEGER DEFAULT 0,
-  date TEXT DEFAULT (datetime('now')),
+  date TEXT DEFAULT (strftime('%Y-%m-%d %H:%M:%S', 'now', '+7 hours')),
   FOREIGN KEY (lid) REFERENCES lotto (lid)
-);
-
-CREATE TABLE my_lotto (
-  mlid INTEGER PRIMARY KEY AUTOINCREMENT,
-  uid INTEGER NOT NULL,
-  lid INTEGER NOT NULL,
-  quantity INTEGER NOT NULL,
-  total_price INTEGER NOT NULL,
-  date TEXT DEFAULT (datetime('now')),
-  FOREIGN KEY (lid) REFERENCES lotto (lid),
-  FOREIGN KEY (uid) REFERENCES users (uid)
 );
 
 CREATE TABLE basket (
@@ -73,10 +56,31 @@ CREATE TABLE basket (
   FOREIGN KEY (uid) REFERENCES users (uid)
 );
 
+CREATE TABLE payment (
+  pid INTEGER PRIMARY KEY AUTOINCREMENT,
+  uid INTEGER NOT NULL,
+  lid INTEGER NOT NULL,
+  quantity INTEGER NOT NULL,
+  total_price INTEGER NOT NULL,
+  date TEXT DEFAULT (strftime('%Y-%m-%d %H:%M:%S', 'now', '+7 hours')),
+  FOREIGN KEY (lid) REFERENCES lotto (lid),
+  FOREIGN KEY (uid) REFERENCES users (uid)
+);
 
-SELECT * from my_lotto
-SELECT * from basket
-SELECT * from lotto
+
+CREATE TABLE my_lotto (
+  mlid INTEGER PRIMARY KEY AUTOINCREMENT,
+  uid INTEGER NOT NULL,
+  lid INTEGER NOT NULL,
+  total_quantity INTEGER NOT NULL,
+  total_price INTEGER NOT NULL,
+  date TEXT DEFAULT (strftime('%Y-%m-%d %H:%M:%S', 'now', '+7 hours')),
+  FOREIGN KEY (lid) REFERENCES lotto (lid),
+  FOREIGN KEY (uid) REFERENCES users (uid)
+);
+
+
+
 
 --Insert table users
 INSERT INTO users (fullname, username, email, phone, password, type, wallet) 
@@ -98,11 +102,10 @@ INSERT INTO users (fullname, username, email, phone, password, wallet, image)
 VALUES ('คามาโดะ ทันจิโร่', '1', 'tanjiro@gmail.com', '0989898989', '1', 3000.00, NULL);
 
 
+INSERT INTO wallet VALUES(3000.00);
 
 
 --Insert table lotto แบบออโต้
-SELECT * FROM lotto
-DELETE FROM lotto;
 
 WITH RECURSIVE
   numbers AS (
@@ -240,7 +243,47 @@ SELECT l.lid, lp.prize, lp.wallet_prize, l.number, l.type, l.price, l.date, l.lo
               JOIN lotto l ON lp.lid = l.lid
               ORDER BY l.date DESC, lp.prize ASC;
 
+SELECT l.lid, lp.prize, lp.wallet_prize, l.number, l.type, l.date
+FROM lotto_prize lp
+JOIN lotto l ON lp.lid = l.lid
+WHERE lp.lid = 1;
+
+SELECT l.lid, lp.prize, lp.wallet_prize, l.number, l.type, l.date, ml.total_quantity
+FROM lotto_prize lp
+JOIN lotto l ON lp.lid = l.lid
+JOIN my_lotto ml ON l.lid = ml.lid
+WHERE lp.lid = 5 AND ml.uid = 6;
+
+SELECT * FROM users WHERE uid = 6
 
 
+SELECT * FROM my_lotto
+SELECT * FROM payment
+SELECT * FROM lotto
+SELECT * FROM lotto_prize
 
 
+SELECT ml.uid, l.lid, l.number, l.type, ml.date, ml.total_quantity, ml.total_price
+FROM  my_lotto ml
+JOIN lotto l ON ml.lid = l.lid
+WHERE ml.uid = 6
+
+
+SELECT ml.uid, l.lid, l.number, l.type, ml.date, ml.total_quantity, ml.total_price, lp.prize
+FROM  my_lotto ml
+JOIN lotto l ON ml.lid = l.lid
+JOIN lotto_prize lp ON l.lid = lp.lid
+WHERE ml.uid = 6
+
+SELECT ml.uid, l.lid, ml.date, ml.total_quantity, ml.total_price, lp.prize
+FROM  my_lotto ml
+JOIN lotto l ON ml.lid = l.lid
+JOIN lotto_prize lp ON l.lid = lp.lid
+WHERE ml.uid = 6
+
+
+SELECT * FROM users
+
+UPDATE users
+SET wallet = 10000000.00
+WHERE uid = 1;

@@ -243,6 +243,100 @@ app.get("/lotto/:id", (req, res) => {
 });
 
 
+// app.get("/lotto-check-prize/:lid", (req, res) => {
+//   const lid = req.params.lid;  // Use req.params.lid to get the 'lid' from the URL
+//   const sql = `
+//               SELECT l.lid, lp.prize, lp.wallet_prize, l.number, l.type, l.date
+//               FROM lotto_prize lp
+//               JOIN lotto l ON lp.lid = l.lid
+//               WHERE lp.lid = ?;
+//   `;
+//   db.get(sql, [lid], (err, row) => {
+//     if (err) {
+//       handleResponse(res, err, null, 500, "Error fetching data");
+//       return;
+//     }
+//     if (!row) {
+//       handleResponse(res, null, null, 404, "Lotto not found");
+//       return;
+//     }
+
+//     res.json(row);
+//   });
+// });
+app.post("/lotto-check-prize", (req, res) => {
+  const { lid, uid } = req.body; // Extract 'lid' and 'uid' from the request body
+
+  const sql = `
+    SELECT l.lid, lp.prize, lp.wallet_prize, l.number, l.type, l.date, ml.total_quantity
+    FROM lotto_prize lp
+    JOIN lotto l ON lp.lid = l.lid
+    JOIN my_lotto ml ON l.lid = ml.lid
+    WHERE lp.lid = ? AND ml.uid = ?;
+  `;
+
+  db.get(sql, [lid, uid], (err, row) => {
+    if (err) {
+      handleResponse(res, err, null, 500, "Error fetching data");
+      return;
+    }
+    if (!row) {
+      handleResponse(res, null, null, 404, "Lotto not found");
+      return;
+    }
+
+    // Respond with the fetched data
+    res.json(row);
+  });
+});
+
+
+
+
+app.put('/get-wallet', (req, res) => {
+  const { wallet_prize, uid } = req.body;
+
+  const selectSql = 'SELECT wallet FROM users WHERE uid = ?';
+  db.get(selectSql, [uid], (err, row) => {
+    if (err) {
+      return res.status(500).json({ error: 'Database error while fetching wallet' });
+    }
+    if (!row) {
+      return res.status(404).json({ error: 'User not found' });
+    }
+
+    const currentWallet = row.wallet || 0;
+    const newWallet = currentWallet + wallet_prize;
+
+    const updateSql = 'UPDATE users SET wallet = ? WHERE uid = ?';
+    db.run(updateSql, [newWallet, uid], function(err) {
+      if (err) {
+        return res.status(500).json({ error: 'Database error while updating wallet' });
+      }
+      res.status(200).json({ message: 'Wallet updated successfully', newWallet });
+    });
+  });
+});
+
+app.delete("/get-wallet/:lid", (req, res) => {
+  const lid = req.params.lid; // Access the 'lid' parameter correctly
+  db.run("DELETE FROM my_lotto WHERE lid = ?", [lid], function (err) {
+    handleResponse(
+      res,
+      err,
+      { message: "ลบ LOTTO ในMy LOTTOเรียบร้อย" },
+      404,
+      "Meeting not found",
+      this.lid
+    );
+  });
+});
+
+
+
+
+
+
 
 app.get('/lotto-prize', (req, res) => {
   const sql = `
@@ -534,74 +628,208 @@ app.put("/basket/quantity", (req, res) => {
   );
 });
 
+
+
 app.post("/payment", (req, res) => {
   const { lid, uid, quantity, total_price } = req.body;
-  console.log("Received payment data:", req.body); // บันทึกข้อมูลที่ได้รับจากไคลเอนต์
+  console.log("Received payment data:", req.body);
 
-  // เริ่มทำธุรกรรมฐานข้อมูล
   db.serialize(() => {
-    db.run("BEGIN TRANSACTION"); // เริ่มธุรกรรม
+    db.run("BEGIN TRANSACTION");
 
-    // แทรกข้อมูลลงในตาราง my_lotto
-    db.run(
-      "INSERT INTO my_lotto (lid, uid, quantity, total_price) VALUES (?, ?, ?, ?)",
-      [lid, uid, quantity, total_price],
-      function (err) {
+    db.get(
+      "SELECT quantity, total_price FROM payment WHERE lid = ? AND uid = ?",
+      [lid, uid],
+      (err, row) => {
         if (err) {
-          console.error("Error inserting data:", err); // บันทึกข้อผิดพลาด
+          console.error("Error checking existing payment:", err);
           return db.run("ROLLBACK", () => {
-            res.status(500).json({ error: "Failed to add item to basket" });
+            res.status(500).json({ error: "Failed to check existing payment" });
           });
         }
-
-        // ลบข้อมูลจากตาราง basket หลังจากแทรกข้อมูลสำเร็จ
         db.run(
-          "DELETE FROM basket WHERE uid = ? AND lid = ?",
-          [uid, lid],
+          "INSERT INTO payment (uid, lid, quantity, total_price) VALUES (?, ?, ?, ?)",
+          [uid, lid, quantity, total_price],
           function (err) {
             if (err) {
-              console.error("Error deleting data:", err); // บันทึกข้อผิดพลาด
+              console.error("Error inserting data into payment:", err);
               return db.run("ROLLBACK", () => {
-                res.status(500).json({ error: "Failed to delete item from basket" });
+                res.status(500).json({ error: "Failed to add item to payment" });
               });
             }
 
-            // ลดค่า lotto_quantity ในตาราง lotto ตามจำนวน quantity
-            db.run(
-              "UPDATE lotto SET lotto_quantity = lotto_quantity - ? WHERE lid = ?",
-              [quantity, lid],
-              function (err) {
-                if (err) {
-                  console.error("Error updating lotto_quantity:", err); // บันทึกข้อผิดพลาด
-                  return db.run("ROLLBACK", () => {
-                    res.status(500).json({ error: "Failed to update lotto_quantity" });
-                  });
-                }
+          db.get(
+            "SELECT total_quantity, total_price FROM my_lotto WHERE lid = ? AND uid = ?",
+            [lid, uid],
+            (err, row) => {
+              if (err) {
+                console.error("Error checking existing payment:", err);
+                return db.run("ROLLBACK", () => {
+                  res.status(500).json({ error: "Failed to check existing payment" });
+                });
+              }
 
-                // ลดค่า wallet ในตาราง users ตามจำนวน total_price
+              if (row) {
+                const newQuantity = row.total_quantity + quantity;
+                const newTotalPrice = row.total_price + total_price;
+
+                console.log(`Updating my_lotto with newQuantity: ${newQuantity}, newTotalPrice: ${newTotalPrice}`);
+
                 db.run(
-                  "UPDATE users SET wallet = wallet - ? WHERE uid = ?",
-                  [total_price, uid],
+                  "UPDATE my_lotto SET total_quantity = ?, total_price = ? WHERE lid = ? AND uid = ?",
+                  [newQuantity, newTotalPrice, lid, uid],
                   function (err) {
                     if (err) {
-                      console.error("Error updating wallet:", err); // บันทึกข้อผิดพลาด
+                      console.error("Error updating payment:", err);
                       return db.run("ROLLBACK", () => {
-                        res.status(500).json({ error: "Failed to update wallet" });
+                        res.status(500).json({ error: "Failed to update payment" });
                       });
                     }
 
-                    // คอมมิตธุรกรรมหลังจากการอัปเดตข้อมูลทั้งหมดเสร็จสิ้น
-                    db.run("COMMIT", () => {
-                      res.status(200).json({ message: "เพิ่มสินค้าเข้าตะกร้าสำเร็จ, ลบรายการจากตะกร้า, ลดจำนวนล็อตโต้, และปรับยอดเงินใน wallet" });
-                    });
+                    db.run(
+                      "UPDATE lotto SET lotto_quantity = lotto_quantity - ? WHERE lid = ?",
+                      [quantity, lid],
+                      function (err) {
+                        if (err) {
+                          console.error("Error updating lotto_quantity:", err);
+                          return db.run("ROLLBACK", () => {
+                            res.status(500).json({ error: "Failed to update lotto_quantity" });
+                          });
+                        }
+                        
+                        db.run(
+                          "DELETE FROM basket WHERE uid = ? AND lid = ?",
+                          [uid, lid],
+                          function (err) {
+                            if (err) {
+                              console.error("Error deleting data from basket:", err);
+                              return db.run("ROLLBACK", () => {
+                                res.status(500).json({ error: "Failed to delete item from basket" });
+                              });
+                            }
+                        db.run(
+                          "UPDATE users SET wallet = wallet - ? WHERE uid = ?",
+                          [total_price, uid],
+                          function (err) {
+                            if (err) {
+                              console.error("Error updating wallet:", err);
+                              return db.run("ROLLBACK", () => {
+                                res.status(500).json({ error: "Failed to update wallet" });
+                              });
+                            }
+
+                            db.run("COMMIT", () => {
+                              res.status(200).json({ message: "Payment processed successfully" });
+                            });
+                          }
+                        );
+                      }
+                        );
+                      }
+                    );
                   }
                 );
+              } else {
+                console.log("Inserting new payment data");
+
+                    db.run(
+                      "INSERT INTO my_lotto (uid, lid, total_quantity, total_price) VALUES (?, ?, ?, ?)",
+                      [uid, lid, quantity, total_price],
+                      function (err) {
+                        if (err) {
+                          console.error("Error inserting data into my_lotto:", err);
+                          return db.run("ROLLBACK", () => {
+                            res.status(500).json({ error: "Failed to add item to my_lotto" });
+                          });
+                        }
+
+                        db.run(
+                          "DELETE FROM basket WHERE uid = ? AND lid = ?",
+                          [uid, lid],
+                          function (err) {
+                            if (err) {
+                              console.error("Error deleting data from basket:", err);
+                              return db.run("ROLLBACK", () => {
+                                res.status(500).json({ error: "Failed to delete item from basket" });
+                              });
+                            }
+
+                            db.run(
+                              "UPDATE lotto SET lotto_quantity = lotto_quantity - ? WHERE lid = ?",
+                              [quantity, lid],
+                              function (err) {
+                                if (err) {
+                                  console.error("Error updating lotto_quantity:", err);
+                                  return db.run("ROLLBACK", () => {
+                                    res.status(500).json({ error: "Failed to update lotto_quantity" });
+                                  });
+                                }
+
+                                db.run(
+                                  "UPDATE users SET wallet = wallet - ? WHERE uid = ?",
+                                  [total_price, uid],
+                                  function (err) {
+                                    if (err) {
+                                      console.error("Error updating wallet:", err);
+                                      return db.run("ROLLBACK", () => {
+                                        res.status(500).json({ error: "Failed to update wallet" });
+                                      });
+                                    }
+
+                                    db.run("COMMIT", () => {
+                                      res.status(200).json({ message: "Payment processed successfully" });
+                                    });
+                                  }
+                                );
+                              }
+                            );
+                          }
+                        );
+                      }
+                    );
               }
-            );
-          }
-        );
+            }
+          );
       }
     );
+      }
+    );
+  });
+});
+
+
+
+app.get('/my_lotto/:uid', (req, res) => {
+  const { uid } = req.params;
+
+  console.log('My Lotto UID:', uid);
+
+  if (!uid) {
+    return res.status(400).json({ error: 'Failed no item ' });
+  }
+
+  const sql = `
+  SELECT ml.uid, l.lid, l.number, l.type, ml.date, ml.total_quantity, ml.total_price
+  FROM my_lotto ml
+  JOIN lotto l ON ml.lid = l.lid
+  WHERE ml.uid = ?
+  ORDER BY ml.mlid DESC;
+
+  `;
+  
+  db.all(sql, [uid], (err, rows) => {
+    if (err) {
+      console.error('Database error:', err); 
+      return res.status(500).json({ error: 'Internal server error' });
+    }
+
+    if (rows.length === 0) {
+      return res.status(404).json({ message: 'Lotto prize not found' });
+    }
+
+    console.log('Response from DB:', rows);
+
+    res.status(200).json(rows);
   });
 });
 
