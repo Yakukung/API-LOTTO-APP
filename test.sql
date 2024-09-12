@@ -6,6 +6,7 @@ DROP TABLE IF EXISTS my_lotto;
 DROP TABLE IF EXISTS payment;
 DROP TABLE IF EXISTS basket;
 DROP TABLE IF EXISTS wallet;
+DROP TABLE IF EXISTS wallet_list;
 
 ALTER TABLE lotto RENAME TO lotto_prize;
 */
@@ -78,6 +79,45 @@ CREATE TABLE my_lotto (
   FOREIGN KEY (lid) REFERENCES lotto (lid),
   FOREIGN KEY (uid) REFERENCES users (uid)
 );
+
+
+CREATE TABLE wallet_list (
+  wlid INTEGER PRIMARY KEY AUTOINCREMENT,
+  uid INTEGER NOT NULL,
+  pid INTEGER DEFAULT NULL,
+   type TEXT CHECK(type IN ('หวยเดี่ยว', 'หวยชุด')),
+  total_price INTEGER NOT NULL,
+  date TEXT DEFAULT (strftime('%Y-%m-%d %H:%M:%S', 'now', '+7 hours')),
+  FOREIGN KEY (uid) REFERENCES users (uid),
+  FOREIGN KEY (pid) REFERENCES payment (pid)
+);
+
+
+
+SELECT * FROM wallet_list
+SELECT * FROM payment
+
+SELECT *
+FROM wallet_list
+WHERE uid = 6
+ORDER BY date DESC;
+
+
+SELECT
+  w.uid,
+  w.pid,
+  w.total_price
+FROM
+  wallet_list w
+WHERE
+  w.uid = 6
+
+
+
+SELECT pid, uid, total_price
+FROM wallet_list
+
+
 
 
 
