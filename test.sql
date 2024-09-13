@@ -230,7 +230,7 @@ WHERE lpid = 3;
 SELECT * FROM lotto
 SELECT * FROM lotto_prize
 
-SELECT * FROM lotto WHERE lid = 20
+SELECT * FROM lotto WHERE lid = 46
 
 
 -- INSERT INTO lotto (number, type, price, lotto_quantity, date) VALUES (123456, 'หวยเดี่ยว', 80, 99, '2024-08-23 13:02:19');

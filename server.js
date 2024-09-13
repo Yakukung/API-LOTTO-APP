@@ -14,10 +14,7 @@ const db = new sqlite3.Database("./lotto.db", (err) => {
 
 app.use(express.json());
 
-// ------------------------------------------------------------
-// DESTINATIONS CRUD
-// ------------------------------------------------------------
-// Get all destinations
+
 app.get("/", (req, res) => {
   console.log("Hello LOTTO!!!");
   res.send("Hello LOTTO!!!"); 
@@ -30,6 +27,8 @@ app.get("/allusers", (req, res) => {
 });
 
 
+
+//ล็อคอินผู้ใช้
 app.post("/login", (req, res) => {
   const { usernameOrEmail, password } = req.body;
 
@@ -37,8 +36,6 @@ app.post("/login", (req, res) => {
     res.status(400).json({ error: "Username/Email and password are required" });
     return;
   }
-
-  // Regular Expression สำหรับตรวจสอบ email
   const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
   let sql;
@@ -76,6 +73,11 @@ app.post("/login", (req, res) => {
 });
 
 
+
+///////////////    สำหรับผู้ใช้     ///////////////////////////
+
+
+// ดึงข้อมูลผู้ใช้ uid นั้น
 app.get("/customers/:uid", (req, res) => {
   const uid = req.params.uid;
   db.get("SELECT * FROM users WHERE uid = ?", [uid], (err, row) => {
@@ -96,6 +98,8 @@ app.get("/customers/:uid", (req, res) => {
   });
 });
 
+
+// ดึงข้อมูลผู้ใช้ uid นั้น
 app.get("/customers/detail/:id", (req, res) => {
   const id = req.params.id;
   db.get("SELECT * FROM users WHERE uid = ?", [id], (err, row) => {
@@ -113,6 +117,8 @@ app.get("/customers/detail/:id", (req, res) => {
   });
 });
 
+
+// อัพเดตข้อมูลผู้ใช้
 app.put("/customers/detail/update/:id", (req, res) => {
   const id = req.params.id;
   const { username, fullname, email, phone, password, image } = req.body;
@@ -132,6 +138,7 @@ app.put("/customers/detail/update/:id", (req, res) => {
   );
 });
 
+// ลบข้อมูลผู้ใช้
 app.delete("/customers/detail/delete/:id", (req, res) => {
   const uid = req.params.id;
   db.run("DELETE FROM users WHERE uid = ?", [uid], function (err) {
@@ -148,7 +155,7 @@ app.delete("/customers/detail/delete/:id", (req, res) => {
 
 
 
-
+// สมัครสมาชิก
 app.post("/register", (req, res) => {
   const { fullname, username, email, phone, password } = req.body;
   
@@ -190,8 +197,7 @@ app.post("/register", (req, res) => {
 });
 
 
-
-
+// อัพเดตข้อมูลผู้ใช้
 app.put("/customers/:id", (req, res) => {
   const id = req.params.id;
   const { usersname, fullname, phone, email, password, image } = req.body;
@@ -215,6 +221,8 @@ app.put("/customers/:id", (req, res) => {
 
 
 
+
+//แสดงLOTTO ทั้งหมด
 app.get('/lotto', (req, res) => {
   const sql = `
              SELECT * FROM lotto
@@ -225,6 +233,8 @@ app.get('/lotto', (req, res) => {
   });
 });
 
+
+// แสดงLOTTO ที่เลือก
 app.get("/lotto/:id", (req, res) => {
   const id = req.params.id;
   db.get("SELECT * FROM lotto WHERE lid = ?", [id], (err, row) => {
@@ -243,29 +253,9 @@ app.get("/lotto/:id", (req, res) => {
 });
 
 
-// app.get("/lotto-check-prize/:lid", (req, res) => {
-//   const lid = req.params.lid;  // Use req.params.lid to get the 'lid' from the URL
-//   const sql = `
-//               SELECT l.lid, lp.prize, lp.wallet_prize, l.number, l.type, l.date
-//               FROM lotto_prize lp
-//               JOIN lotto l ON lp.lid = l.lid
-//               WHERE lp.lid = ?;
-//   `;
-//   db.get(sql, [lid], (err, row) => {
-//     if (err) {
-//       handleResponse(res, err, null, 500, "Error fetching data");
-//       return;
-//     }
-//     if (!row) {
-//       handleResponse(res, null, null, 404, "Lotto not found");
-//       return;
-//     }
-
-//     res.json(row);
-//   });
-// });
+// แสดงว่าถูกรางวัลไหม
 app.post("/lotto-check-prize", (req, res) => {
-  const { lid, uid } = req.body; // Extract 'lid' and 'uid' from the request body
+  const { lid, uid } = req.body; 
 
   const sql = `
     SELECT l.lid, lp.prize, lp.wallet_prize, l.number, l.type, l.date, ml.total_quantity
@@ -285,14 +275,13 @@ app.post("/lotto-check-prize", (req, res) => {
       return;
     }
 
-    // Respond with the fetched data
     res.json(row);
   });
 });
 
 
 
-
+// เติม wallet
 app.put('/get-wallet', (req, res) => {
   const { wallet_prize, uid } = req.body;
 
@@ -318,13 +307,14 @@ app.put('/get-wallet', (req, res) => {
   });
 });
 
+// หลังจากซื้อเสร็จลบ lid   LOTTO ของฉัน
 app.delete("/get-wallet/:lid", (req, res) => {
-  const lid = req.params.lid; // Access the 'lid' parameter correctly
+  const lid = req.params.lid; 
   db.run("DELETE FROM my_lotto WHERE lid = ?", [lid], function (err) {
     handleResponse(
       res,
       err,
-      { message: "ลบ LOTTO ในMy LOTTOเรียบร้อย" },
+      { message: "สำเร็จ" },
       404,
       "Meeting not found",
       this.lid
@@ -336,7 +326,7 @@ app.delete("/get-wallet/:lid", (req, res) => {
 
 
 
-
+//  แสดงรางวัล
 app.get('/lotto-prize', (req, res) => {
   const sql = `
              SELECT l.lid, lp.prize, lp.wallet_prize, l.number, l.type, l.price, l.date, l.lotto_quantity
@@ -345,30 +335,15 @@ app.get('/lotto-prize', (req, res) => {
               ORDER BY l.date DESC, lp.prize ASC;
   `;
   db.all(sql, (err, row) => {
-    console.log('Response from DB:', row); // แสดงข้อมูลที่ได้จากฐานข้อมูล
+    console.log('Response from DB:', row); 
     handleResponse(res, err, row, 404, 'Lotto prize not found');
   });
 });
 
 
-//กรณีอยากแสดงรางวัลต่อวัน
-// app.get('/lotto-prize', (req, res) => {
-//   const sql = `
-//               SELECT lp.prize, l.number, l.type, price, l.date, lotto_quantity
-//               FROM lotto_prize lp
-//               JOIN lotto l ON lp.lid = l.lid
-//               WHERE DATE(l.date) = DATE('now')
-//   `;
-//   db.all(sql, (err, row) => {
-//     console.log('Response from DB:', row); // แสดงข้อมูลที่ได้จากฐานข้อมูล
-//     handleResponse(res, err, row, 404, 'Lotto prize not found');
-//   });
-// });
-
-
-
+// ตังกรองประเภท LOTTO
 app.post('/lotto-types', (req, res) => {
-  const { type } = req.body; // รับค่าจาก body ของคำขอ POST
+  const { type } = req.body;
 
   console.log('Type received:', type);
 
@@ -401,8 +376,9 @@ app.post('/lotto-types', (req, res) => {
 });
 
 
+// ตังกรองประเภท LOTTO
 app.get('/lotto/types', (req, res) => {
-  const { type } = req.query; // รับค่าจาก query string
+  const { type } = req.query; 
 
   console.log('Type received:', type);
 
@@ -436,42 +412,7 @@ app.get('/lotto/types', (req, res) => {
 
 
 
-
-
-// app.post('/lotto-prize/type/', (req, res) => {
-//   const { type } = req.body;
-
-//   console.log('Type received:', type);
-
-//   if (!type) {
-//     return res.status(400).json({ error: 'Type parameter is required' });
-//   }
-
-//   const sql = `
-//     SELECT lp.prize, l.number, l.type, price, l.date, lotto_quantity
-//     FROM lotto_prize lp
-//     JOIN lotto l ON lp.lid = l.lid
-//     WHERE l.type = ?
-//   `;
-  
-//   db.all(sql, [type], (err, rows) => {
-//     if (err) {
-//       console.error('Database error:', err); 
-//       return res.status(500).json({ error: 'Internal server error' });
-//     }
-
-//     if (rows.length === 0) {
-//       return res.status(404).json({ message: 'Lotto prize not found' });
-//     }
-
-//     console.log('Querying for type:', type); 
-//     console.log('Response from DB:', rows);
-
-//     res.status(200).json(rows);
-//   });
-// });
-
-
+// ตังกรองรางวัลประเภท LOTTO
 app.get('/lotto-prize/type', (req, res) => {
   const { type } = req.query; 
 
@@ -506,6 +447,7 @@ app.get('/lotto-prize/type', (req, res) => {
 });
 
 
+// เช็คจำนวนในตะกร้า
 app.get('/check-basket', (req, res) => {
   const { uid, lid } = req.query;
 
@@ -523,7 +465,7 @@ app.get('/check-basket', (req, res) => {
   });
 });
 
-
+// เพิ่มลงตะกร้า
 app.post("/add-basket", (req, res) => {
   const { lid, uid, quantity } = req.body;
   db.run(
@@ -539,6 +481,7 @@ app.post("/add-basket", (req, res) => {
   );
 });
 
+// เพิ่มจำนวนลงตะกร้า
 app.put('/update-basket', (req, res) => {
   const { uid, lid, quantity } = req.body;
 
@@ -552,9 +495,9 @@ app.put('/update-basket', (req, res) => {
 });
 
 
-
+// เรียกดู lotto ในตะกร้าของผู้ใช้นั้น
 app.get('/basket/:uid', (req, res) => {
-  const { uid } = req.params; // รับ uid จาก path parameter
+  const { uid } = req.params;
 
   console.log('basket UID:', uid);
 
@@ -587,6 +530,8 @@ app.get('/basket/:uid', (req, res) => {
 });
 
 
+
+// ลบออกจากตะกร้า
 app.delete("/basket/:id", (req, res) => {
   const lid = req.params.id;
   db.run("DELETE FROM basket WHERE lid = ?", [lid], function (err) {
@@ -603,6 +548,7 @@ app.delete("/basket/:id", (req, res) => {
 });
 
 
+// เพิ่มจำนวนลงตะกร้า
 app.put("/basket/quantity", (req, res) => {
   const { uid, lid, quantity } = req.body;
   
@@ -627,8 +573,7 @@ app.put("/basket/quantity", (req, res) => {
   );
 });
 
-
-
+// จ่ายเงิน
 app.post("/payment", (req, res) => {
   const { lid, uid, quantity, total_price } = req.body;
   console.log("Received payment data:", req.body);
@@ -825,7 +770,43 @@ app.post("/payment", (req, res) => {
 });
 
 
+// แสดงรายการที่ซื้อแล้ว
+app.get('/my_lotto/:uid', (req, res) => {
+  const { uid } = req.params;
 
+  console.log('My Lotto UID:', uid);
+
+  if (!uid) {
+    return res.status(400).json({ error: 'Failed no item ' });
+  }
+
+  const sql = `
+  SELECT ml.uid, l.lid, l.number, l.type, ml.date, ml.total_quantity, ml.total_price
+  FROM my_lotto ml
+  JOIN lotto l ON ml.lid = l.lid
+  WHERE ml.uid = ?
+  ORDER BY ml.mlid DESC;
+
+  `;
+  
+  db.all(sql, [uid], (err, rows) => {
+    if (err) {
+      console.error('Database error:', err); 
+      return res.status(500).json({ error: 'Internal server error' });
+    }
+
+    if (rows.length === 0) {
+      return res.status(404).json({ message: 'Lotto prize not found' });
+    }
+
+    console.log('Response from DB:', rows);
+
+    res.status(200).json(rows);
+  });
+});
+
+
+// แสดงรายการที่ซื้อแล้ว
 app.get('/my_lotto/:uid', (req, res) => {
   const { uid } = req.params;
 
@@ -862,43 +843,7 @@ app.get('/my_lotto/:uid', (req, res) => {
 
 
 
-app.get('/my_lotto/:uid', (req, res) => {
-  const { uid } = req.params;
-
-  console.log('My Lotto UID:', uid);
-
-  if (!uid) {
-    return res.status(400).json({ error: 'Failed no item ' });
-  }
-
-  const sql = `
-  SELECT ml.uid, l.lid, l.number, l.type, ml.date, ml.total_quantity, ml.total_price
-  FROM my_lotto ml
-  JOIN lotto l ON ml.lid = l.lid
-  WHERE ml.uid = ?
-  ORDER BY ml.mlid DESC;
-
-  `;
-  
-  db.all(sql, [uid], (err, rows) => {
-    if (err) {
-      console.error('Database error:', err); 
-      return res.status(500).json({ error: 'Internal server error' });
-    }
-
-    if (rows.length === 0) {
-      return res.status(404).json({ message: 'Lotto prize not found' });
-    }
-
-    console.log('Response from DB:', rows);
-
-    res.status(200).json(rows);
-  });
-});
-
-
-
-
+// แสดงรายการรายรับรายจ่าย
 app.get('/lotto_list/:uid', (req, res) => {
   const { uid } = req.params;
 
@@ -932,6 +877,8 @@ app.get('/lotto_list/:uid', (req, res) => {
 });
 
 
+
+// เติม wallet
 app.put('/topup_wallet/:uid', (req, res) => {
   const uid = req.params.uid;
   const { wallet } = req.body;
@@ -978,8 +925,15 @@ app.put('/topup_wallet/:uid', (req, res) => {
   });
 });
 
+
+
+
+
+
+///////////////    สำหรับแอดมิน     ///////////////////////////
+ 
+//แอดมิน รีเซ็ตค่าเริ่มต้น
 app.delete("/admin/reset", (req, res) => {
-  // เริ่มต้น transaction
   db.serialize(() => {
     db.run("BEGIN TRANSACTION", function (err) {
       if (err) {
@@ -1074,7 +1028,6 @@ app.delete("/admin/reset", (req, res) => {
                         });
                       }
 
-                      // ถ้าทุกอย่างผ่านไปได้ด้วยดี, ทำการ commit
                       db.run("COMMIT", function (err) {
                         if (err) {
                           return res.status(500).json({ error: err.message });
@@ -1097,7 +1050,7 @@ app.delete("/admin/reset", (req, res) => {
 
 
 
-
+// แสดงข้อมูลรางวัลทั้งหมด
 app.get('/admin/prize', (req, res) => {
   const sql = `
     SELECT l.lid, lp.prize, lp.wallet_prize, l.number, l.type, l.price, l.date, l.lotto_quantity
@@ -1109,16 +1062,15 @@ app.get('/admin/prize', (req, res) => {
     ORDER BY lp.prize ASC;
   `;
   db.all(sql, (err, rows) => {
-    console.log('Response from DB:', rows); // แสดงข้อมูลที่ได้จากฐานข้อมูล
+    console.log('Response from DB:', rows);
     handleResponse(res, err, rows, 404, 'Lotto prize not found');
   });
 });
 
-
+// ตัวสุ่มรางวัล
 app.post("/admin/random/prize", (req, res) => {
   const { prize } = req.body;
 
-  // Check if there's data for today with the given prize
   db.get("SELECT COUNT(*) as count FROM lotto_prize WHERE DATE(date) = DATE('now') AND prize = ?", [prize], (err, row) => {
     if (err) {
       console.error(err);
@@ -1128,7 +1080,6 @@ app.post("/admin/random/prize", (req, res) => {
     const hasTodayPrize = row.count > 0;
 
     if (!hasTodayPrize) {
-      // If no data for today with this prize, insert new record
       db.run(`
         INSERT INTO lotto_prize (lid, prize, wallet_prize, date)
         SELECT
@@ -1154,7 +1105,6 @@ app.post("/admin/random/prize", (req, res) => {
         res.status(200).json({ message: "New prize assigned successfully" });
       });
     } else {
-      // If data exists for today with this prize, update the existing record
       db.run(`
         UPDATE lotto_prize
         SET
