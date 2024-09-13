@@ -1129,6 +1129,18 @@ app.post("/admin/random/prize", (req, res) => {
   });
 });
 
+app.put('/set-wallet', (req, res) => {
+  const { wallet} = req.body;
+
+    const updateSql = 'UPDATE wallet SET wallet = ?';
+    db.run(updateSql, [wallet], function(err) {
+      if (err) {
+        return res.status(500).json({ error: 'set wallet error' });
+      }
+      res.status(200).json({ message: 'set wallet successfully', wallet});
+  });
+});
+
 
 
 

@@ -96,35 +96,6 @@ CREATE TABLE wallet_list (
 
 
 
-
-SELECT * FROM wallet_list
-SELECT * FROM payment
-
-SELECT *
-FROM wallet_list
-WHERE uid = 6
-ORDER BY date DESC;
-
-
-SELECT
-  w.uid,
-  w.pid,
-  w.total_price
-FROM
-  wallet_list w
-WHERE
-  w.uid = 6
-
-
-
-SELECT pid, uid, total_price
-FROM wallet_list
-
-
-
-
-
-
 --Insert table users
 INSERT INTO users (fullname, username, email, phone, password, type, wallet) 
 VALUES ('Admin', 'admin', 'admin@gmail.com', '0999911111', '1', 0, 0.00);
@@ -145,12 +116,8 @@ INSERT INTO users (fullname, username, email, phone, password, wallet, image)
 VALUES ('คามาโดะ ทันจิโร่', '1', 'tanjiro@gmail.com', '0989898989', '1', 3000.00, 'https://cdn.readawrite.com/articles/764/763922/thumbnail/large.gif?5');
 
 
+--Insert table  wallet
 INSERT INTO wallet VALUES(3000.00);
-
-
-
-
-
 
 
 --Insert table lotto แบบออโต้
@@ -187,8 +154,6 @@ INSERT INTO lotto_prize (lid, prize, wallet_prize) VALUES (3, 3, 1000000);
 INSERT INTO lotto_prize (lid, prize, wallet_prize) VALUES (4, 2, 2000000);
 INSERT INTO lotto_prize (lid, prize, wallet_prize) VALUES (5, 1, 6000000);
 
-
-PRAGMA table_info(lotto_prize);
 
 
 INSERT INTO lotto_prize (lid, prize, wallet_prize)
@@ -376,3 +341,8 @@ SELECT * FROM users
 UPDATE users
 SET wallet = 10000000.00
 WHERE uid = 1;
+
+
+
+SELECT wallet FROM wallet;
+UPDATE wallet SET wallet = 5000
